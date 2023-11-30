@@ -6,6 +6,7 @@ import (
 )
 
 // SetupRoutes initializes all routes for the application
+// SetupRoutes initializes all routes for the application
 func SetupRoutes(app *fiber.App) {
 	// Add a Recipe
 	app.Post("/recipes", handlers.AddRecipeHandler)
@@ -23,13 +24,13 @@ func SetupRoutes(app *fiber.App) {
 	app.Get("/recipes", handlers.GetAllRecipesHandler)
 
 	// Search Recipes by Name
-	app.Get("/recipes/search", handlers.SearchRecipesByNameHandler)
+	app.Get("/recipes/search/name", handlers.SearchRecipesByNameHandler)
 
 	// Search Recipes by Ingredient
-	app.Get("/recipes/search", handlers.SearchRecipesByIngredientHandler)
+	app.Get("/recipes/search/ingredient", handlers.SearchRecipesByIngredientHandler)
 
 	// Search Recipes by Category (Assuming a 'Category' Field in Recipe Model)
-	app.Get("/recipes/search", handlers.SearchRecipesByCategoryHandler)
+	app.Get("/recipes/search/category", handlers.SearchRecipesByCategoryHandler)
 
 	// Mark as Liked
 	app.Post("/recipes/:id/like", handlers.MarkAsLikedHandler)

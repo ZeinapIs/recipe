@@ -5,11 +5,10 @@ import "gorm.io/gorm"
 
 type Recipe struct {
 	gorm.Model
-	ID           int
-	Name         string
-	Ingredients  string
-	Instructions string
-	Likes        uint
-	Dislikes     uint
-	// Add other fields as needed
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	Name         string `json:"name"`
+	Ingredients  string `json:"ingredients"`
+	Instructions string `json:"instructions"`
+	Likes        int    `json:"likes"`
+	Dislikes     int    `json:"dislikes"`
 }

@@ -1,6 +1,6 @@
 module github.com/ZeinapIs/recipe
 
-go 1.21.1
+go 1.19
 
 require (
 	github.com/andybalholm/brotli v1.0.6 // indirect

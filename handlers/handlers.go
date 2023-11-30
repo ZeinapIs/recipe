@@ -2,22 +2,47 @@
 package handlers
 
 import (
+	"strings"
+
 	"github.com/ZeinapIs/recipe/database"
+	"github.com/ZeinapIs/recipe/model"
 	"github.com/gofiber/fiber/v2"
 )
 
 // AddRecipeHandler adds a new recipe to the database
+// AddRecipeHandler adds a new recipe to the database
+// AddRecipeHandler adds a new recipe to the database
 func AddRecipeHandler(c *fiber.Ctx) error {
-	var newRecipe models.Recipe
+	var newRecipe model.Recipe
 
 	// Parse request body to get recipe details
 	if err := c.BodyParser(&newRecipe); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Validate recipe data
+	if newRecipe.Name == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing recipe name"})
+	}
+
+	// Check if recipe name already exists
+	// Check if recipe name already exists
+	var existingRecipe model.Recipe
+	if err := database.DB.Db.Where("name = ?", newRecipe.Name).First(&existingRecipe).Error; err == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Recipe name already exists"})
+	}
+
+	// Validate ingredients list format
+	ingredientsList := strings.Split(newRecipe.Ingredients, ",")
+	for _, ingredient := range ingredientsList {
+		if ingredient == "" {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Invalid ingredient format"})
+		}
 	}
 
 	// Perform database insertion
-	if err := database.DB.Create(&newRecipe).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to add recipe"})
+	if err := database.DB.Db.Create(&newRecipe).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Internal Server Error"})
 	}
 
 	// Return success response
@@ -30,19 +55,19 @@ func UpdateRecipeHandler(c *fiber.Ctx) error {
 	recipeID := c.Params("id")
 
 	// Check if the recipe exists
-	var existingRecipe models.Recipe
-	if err := database.DB.First(&existingRecipe, recipeID).Error; err != nil {
+	var existingRecipe model.Recipe
+	if err := database.DB.Db.First(&existingRecipe, recipeID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
 	}
 
 	// Parse request body to get updated recipe details
-	var updatedRecipe models.Recipe
+	var updatedRecipe model.Recipe
 	if err := c.BodyParser(&updatedRecipe); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
 	// Update existing recipe
-	database.DB.Model(&existingRecipe).Updates(&updatedRecipe)
+	database.DB.Db.Model(&existingRecipe).Updates(&updatedRecipe)
 
 	// Return success response
 	return c.JSON(fiber.Map{"message": "Recipe updated successfully"})
@@ -54,13 +79,13 @@ func DeleteRecipeHandler(c *fiber.Ctx) error {
 	recipeID := c.Params("id")
 
 	// Check if the recipe exists
-	var existingRecipe models.Recipe
-	if err := database.DB.First(&existingRecipe, recipeID).Error; err != nil {
+	var existingRecipe model.Recipe
+	if err := database.DB.Db.First(&existingRecipe, recipeID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
 	}
 
 	// Delete the recipe
-	database.DB.Delete(&existingRecipe)
+	database.DB.Db.Delete(&existingRecipe)
 
 	// Return success response
 	return c.JSON(fiber.Map{"message": "Recipe deleted successfully"})
@@ -72,8 +97,8 @@ func GetRecipeByIDHandler(c *fiber.Ctx) error {
 	recipeID := c.Params("id")
 
 	// Check if the recipe exists
-	var recipe models.Recipe
-	if err := database.DB.First(&recipe, recipeID).Error; err != nil {
+	var recipe model.Recipe
+	if err := database.DB.Db.First(&recipe, recipeID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
 	}
 
@@ -83,10 +108,10 @@ func GetRecipeByIDHandler(c *fiber.Ctx) error {
 
 // GetAllRecipesHandler retrieves a list of all recipes
 func GetAllRecipesHandler(c *fiber.Ctx) error {
-	var recipes []models.Recipe
+	var recipes []model.Recipe
 
 	// Fetch all recipes from the database
-	database.DB.Find(&recipes)
+	database.DB.Db.Find(&recipes)
 
 	// Return the list of recipes
 	return c.JSON(recipes)
@@ -98,8 +123,8 @@ func SearchRecipesByNameHandler(c *fiber.Ctx) error {
 	recipeName := c.Query("name")
 
 	// Search for recipes by name
-	var recipes []models.Recipe
-	database.DB.Where("name LIKE ?", "%"+recipeName+"%").Find(&recipes)
+	var recipes []model.Recipe
+	database.DB.Db.Where("name LIKE ?", "%"+recipeName+"%").Find(&recipes)
 
 	// Return the list of matching recipes
 	return c.JSON(recipes)
@@ -111,8 +136,8 @@ func SearchRecipesByIngredientHandler(c *fiber.Ctx) error {
 	ingredient := c.Query("ingredient")
 
 	// Search for recipes by ingredient
-	var recipes []models.Recipe
-	database.DB.Where("ingredients LIKE ?", "%"+ingredient+"%").Find(&recipes)
+	var recipes []model.Recipe
+	database.DB.Db.Where("ingredients LIKE ?", "%"+ingredient+"%").Find(&recipes)
 
 	// Return the list of matching recipes
 	return c.JSON(recipes)
@@ -123,8 +148,8 @@ func SearchRecipesByCategoryHandler(c *fiber.Ctx) error {
 	// Parse query parameter for the category
 	category := c.Query("category")
 	// Search for recipes by category (assuming a 'category' field in the Recipe model)
-	var recipes []models.Recipe
-	database.DB.Where("category = ?", category).Find(&recipes)
+	var recipes []model.Recipe
+	database.DB.Db.Where("category = ?", category).Find(&recipes)
 
 	// Return the list of matching recipes
 	return c.JSON(recipes)
@@ -136,13 +161,13 @@ func MarkAsLikedHandler(c *fiber.Ctx) error {
 	recipeID := c.Params("id")
 
 	// Check if the recipe exists
-	var existingRecipe models.Recipe
-	if err := database.DB.First(&existingRecipe, recipeID).Error; err != nil {
+	var existingRecipe model.Recipe
+	if err := database.DB.Db.First(&existingRecipe, recipeID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
 	}
 
 	// Increment the 'Likes' count (assuming a 'Likes' field in the Recipe model)
-	database.DB.Model(&existingRecipe).UpdateColumn("likes", existingRecipe.Likes+1)
+	database.DB.Db.Model(&existingRecipe).UpdateColumn("likes", existingRecipe.Likes+1)
 
 	// Return success response
 	return c.JSON(fiber.Map{"message": "Recipe marked as liked"})
@@ -154,13 +179,13 @@ func MarkAsDislikedHandler(c *fiber.Ctx) error {
 	recipeID := c.Params("id")
 
 	// Check if the recipe exists
-	var existingRecipe models.Recipe
-	if err := database.DB.First(&existingRecipe, recipeID).Error; err != nil {
+	var existingRecipe model.Recipe
+	if err := database.DB.Db.First(&existingRecipe, recipeID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Recipe not found"})
 	}
 
 	// Increment the 'Dislikes' count (assuming a 'Dislikes' field in the Recipe model)
-	database.DB.Model(&existingRecipe).UpdateColumn("dislikes", existingRecipe.Dislikes+1)
+	database.DB.Db.Model(&existingRecipe).UpdateColumn("dislikes", existingRecipe.Dislikes+1)
 
 	// Return success response
 	return c.JSON(fiber.Map{"message": "Recipe marked as disliked"})
@@ -168,10 +193,10 @@ func MarkAsDislikedHandler(c *fiber.Ctx) error {
 
 // GetAllLikedRecipesHandler retrieves a list of all liked recipes
 func GetAllLikedRecipesHandler(c *fiber.Ctx) error {
-	var likedRecipes []models.Recipe
+	var likedRecipes []model.Recipe
 
 	// Fetch all recipes with at least one like
-	database.DB.Where("likes > 0").Find(&likedRecipes)
+	database.DB.Db.Where("likes > 0").Find(&likedRecipes)
 
 	// Return the list of liked recipes
 	return c.JSON(likedRecipes)
@@ -179,10 +204,10 @@ func GetAllLikedRecipesHandler(c *fiber.Ctx) error {
 
 // GetAllDislikedRecipesHandler retrieves a list of all disliked recipes
 func GetAllDislikedRecipesHandler(c *fiber.Ctx) error {
-	var dislikedRecipes []models.Recipe
+	var dislikedRecipes []model.Recipe
 
 	// Fetch all recipes with at least one dislike
-	database.DB.Where("dislikes > 0").Find(&dislikedRecipes)
+	database.DB.Db.Where("dislikes > 0").Find(&dislikedRecipes)
 
 	// Return the list of disliked recipes
 	return c.JSON(dislikedRecipes)

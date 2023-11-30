@@ -8,15 +8,10 @@ import (
 )
 
 func main() {
-	// Initialize Fiber app
+	database.ConnectDb()
 	app := fiber.New()
 
-	// Setup database
-	database.InitDatabase()
-
-	// Setup routes
 	routes.SetupRoutes(app)
 
-	// Start the server
 	app.Listen(":3000")
 }
