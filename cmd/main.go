@@ -18,5 +18,5 @@ func main() {
 	routes.SetupRoutes(app)
 
 	// Start the server
-	app.Listen(":8080")
+	app.Listen(":3000")
 }
